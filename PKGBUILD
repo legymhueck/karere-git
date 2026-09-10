@@ -1,7 +1,7 @@
-# Maintainer: <your name> <your email>
+# Maintainer: MicLeh <micleh at proton dot me>
 
 pkgname=karere-git
-pkgver=4.2.2.r0.g47610b4
+pkgver=4.2.5.r0.gc2cff09
 pkgrel=1
 pkgdesc="A fast, native WhatsApp client for Linux with GTK4/LibAdwaita (v4 CEF build)"
 url="https://github.com/tobagin/karere"
