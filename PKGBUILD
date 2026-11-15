@@ -1,7 +1,7 @@
 # Maintainer: MicLeh <micleh at proton dot me>
 
 pkgname=karere-git
-pkgver=4.2.5.r0.gc2cff09
+pkgver=4.5.0.r1.g988485d
 pkgrel=1
 pkgdesc="A fast, native WhatsApp client for Linux with GTK4/LibAdwaita (v4 CEF build)"
 url="https://github.com/tobagin/karere"
@@ -52,16 +52,20 @@ conflicts=('karere')
 options=('!lto')
 
 # The CEF binary distribution (built with proprietary codecs) must match the
-# `cef` crate pinned in Cargo.lock (currently cef 150.0.0+150.0.10 => CEF
-# 150.0.10). If the crate bumps, bump _cef_ver together; the author publishes
-# matching CEF builds under the `cef-<cef-version>-proprietary-codecs` tag.
-_cef_ver="150.0.10+g8042e43+chromium-150.0.7871.101"
+# `cef` crate pinned in Cargo.lock (currently cef 156.4.0+156.0.26 => CEF
+# 156.0.26). If the crate bumps, bump _cef_ver, _cef_tag and the checksums
+# together; the author publishes matching CEF builds under the
+# `cef-<cef-version>-proprietary-codecs[-N]` tag. prepare() stops the build when
+# they no longer match (the app would otherwise crash at start with
+# "unsupported CEF API version").
+_cef_ver="156.0.26+g8ea0c73+chromium-156.0.8078.88"
+_cef_tag="cef-156.0.26-proprietary-codecs-2"
 if [[ "$CARCH" == "x86_64" ]]; then
   _cef_platform="linux64"
-  _cef_sha256="3bbe298368c4d87c19ad9b7ed4e8449ea91b32ffa3cefc8672791a1b96c9c3b9"
+  _cef_sha256="027473508ec25227972a8bc9182b15723f98cfa2e301746f8e2224c6a58517d5"
 elif [[ "$CARCH" == "aarch64" ]]; then
   _cef_platform="linuxarm64"
-  _cef_sha256="543bc10ce854fc39b0493ff8b369c47d65fa43f2fb974b734252eea805bffc53"
+  _cef_sha256="9dd971ca62b3282b8b6b55da6490b5676550e6b6a25039c599cce9e69f4ccb76"
 else
   _cef_platform=""
   _cef_sha256=""
@@ -70,10 +74,10 @@ _cef_archive="cef_binary_${_cef_ver}_${_cef_platform}_minimal.zip"
 
 source=(
   "karere::git+https://github.com/tobagin/karere.git"
-  "$_cef_archive::https://github.com/tobagin/karere/releases/download/cef-150.0.10-proprietary-codecs/cef_binary_${_cef_ver//+/%2B}_${_cef_platform}_minimal.zip"
+  "$_cef_archive::https://github.com/tobagin/karere/releases/download/${_cef_tag}/cef_binary_${_cef_ver//+/%2B}_${_cef_platform}_minimal.zip"
 )
 sha256sums=('SKIP'
-            '3bbe298368c4d87c19ad9b7ed4e8449ea91b32ffa3cefc8672791a1b96c9c3b9')
+            "$_cef_sha256")
 noextract=("$_cef_archive")
 
 pkgver() {
@@ -86,6 +90,18 @@ _cef_dir() {
     find "$srcdir/cef-src" -mindepth 1 -maxdepth 1 -type d -name 'cef_binary_*' | head -n1
   else
     printf '%s\n' "$srcdir/cef-src"
+  fi
+}
+
+prepare() {
+  cd "$srcdir/karere"
+  # The downloaded CEF must be the version the cef crate was built for.
+  local _crate
+  _crate="$(awk '/^name = "cef"$/ { getline; print; exit }' Cargo.lock | sed -E 's/.*\+([0-9.]+)".*/\1/')"
+  if [[ $_crate != "${_cef_ver%%+*}" ]]; then
+    echo "Cargo.lock needs CEF $_crate, but this PKGBUILD downloads ${_cef_ver%%+*}:" \
+      "update _cef_ver, _cef_tag and the checksums" >&2
+    return 1
   fi
 }
 
